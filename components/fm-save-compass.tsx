@@ -1453,51 +1453,6 @@ function StatusCell({ player }: { player: PlayerSnapshot }) {
   );
 }
 
-const FOOT_LEVEL_COLORS = ["", "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e", "#4ade80"] as const;
-
-function footLevel(val: string | undefined): number {
-  if (!val) return 0;
-  const v = val.toLowerCase().replace(/\s+/g, " ").trim();
-  if (v === "sehr stark" || v === "very strong" || v === "sehr gut" || v === "very good") return 6;
-  if (v === "stark" || v === "strong" || v === "gut" || v === "good") return 5;
-  if (v === "ziemlich stark" || v === "fairly strong" || v === "reasonable" || v === "ordentlich") return 4;
-  if (v === "passabel" || v === "passable" || v === "durchschnitt" || v === "average") return 3;
-  if (v === "schwach" || v === "weak" || v === "schlecht") return 2;
-  if (v === "sehr schwach" || v === "very weak" || v === "sehr schlecht") return 1;
-  return 0;
-}
-
-function FootBar({ label, value }: { label: string; value?: string }) {
-  const lvl = footLevel(value);
-  const color = lvl > 0 ? FOOT_LEVEL_COLORS[lvl] : undefined;
-  return (
-    <div className="foot-bar-row">
-      <span className="foot-bar-label">{label}</span>
-      <div className="foot-bar-segments">
-        {Array.from({ length: 6 }, (_, i) => (
-          <span
-            key={i}
-            className="foot-bar-seg"
-            style={i < lvl ? { background: color } : undefined}
-          />
-        ))}
-      </div>
-      <span className="foot-bar-value" style={color ? { color } : undefined}>
-        {value || "–"}
-      </span>
-    </div>
-  );
-}
-
-function FootPair({ left, right }: { left?: string; right?: string }) {
-  return (
-    <div className="foot-pair">
-      <FootBar label="Links" value={left} />
-      <FootBar label="Rechts" value={right} />
-    </div>
-  );
-}
-
 function CsvDetails({ player }: { player: PlayerSnapshot }) {
   const details = player.details;
   const groups: Array<{ title: string; fields: Array<[string, string]> }> = [
@@ -1528,6 +1483,8 @@ function CsvDetails({ player }: { player: PlayerSnapshot }) {
         ["Idealpos", details.idealPosition],
         ["Medien", details.mediaDescription],
         ["Persönlichkeit", details.personality],
+        ["Linker Fuß", details.leftFoot],
+        ["Rechter Fuß", details.rightFoot],
       ],
     },
   ];
@@ -1547,9 +1504,6 @@ function CsvDetails({ player }: { player: PlayerSnapshot }) {
                 </div>
               ))}
           </dl>
-          {group.title === "Profil" && (
-            <FootPair left={details.leftFoot} right={details.rightFoot} />
-          )}
         </div>
       ))}
     </div>
