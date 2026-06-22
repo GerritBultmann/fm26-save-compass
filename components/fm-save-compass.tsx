@@ -1303,21 +1303,6 @@ function PlayerProfileOverlay({
         </header>
 
         <div className="profile-overlay-body">
-          <section className="profile-summary">
-            <div className="profile-stats compact">
-              <MiniStat
-                label="Veraenderung"
-                value={formatDelta(player.valueDelta)}
-                tone={player.valueDelta && player.valueDelta < 0 ? "red" : "green"}
-              />
-              <MiniStat label="Wertung" value={player.latest.details.rating || "-"} />
-              <MiniStat label="Einsaetze" value={player.latest.details.appearances || "-"} />
-              <MiniStat label="Minuten" value={player.latest.details.minutes || "-"} />
-              <MiniStat label="Attribut Ø" value={player.avgAttribute ? player.avgAttribute.toFixed(1) : "-"} />
-            </div>
-
-          </section>
-
           <section className="profile-analysis">
             <RoleAnalyzer
               mode={mode}

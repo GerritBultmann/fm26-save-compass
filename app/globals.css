@@ -1066,7 +1066,7 @@ h1 {
 .profile-overlay-body {
   display: grid;
   gap: clamp(8px, 0.75vw, 12px);
-  grid-template-columns: minmax(320px, 0.52fr) minmax(0, 1.48fr);
+  grid-template-columns: 1fr;
   min-height: 0;
   overflow: hidden;
   padding: clamp(8px, 0.75vw, 12px);
