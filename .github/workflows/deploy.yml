@@ -33,10 +33,17 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Set ADMIN_PASSWORD secret on Worker
-        run: echo "$ADMIN_PASSWORD" | npx wrangler secret put ADMIN_PASSWORD --name fm26-save-compass --config wrangler.json
+      - name: Set Worker secrets
         working-directory: dist/server
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+        run: |
+          echo "$ADMIN_PASSWORD" | npx wrangler secret put ADMIN_PASSWORD --config wrangler.json
+          echo "$GH_PUBLISH_TOKEN" | npx wrangler secret put GITHUB_TOKEN --config wrangler.json
+          echo "GerritBultmann" | npx wrangler secret put GITHUB_OWNER --config wrangler.json
+          echo "fm26-save-compass" | npx wrangler secret put GITHUB_REPO --config wrangler.json
+          echo "main" | npx wrangler secret put GITHUB_BRANCH --config wrangler.json
+          echo "public/data/library.json" | npx wrangler secret put GITHUB_DATA_PATH --config wrangler.json
