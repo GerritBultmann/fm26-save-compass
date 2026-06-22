@@ -1552,6 +1552,33 @@ h1 {
   gap: 5px;
 }
 
+.foot-pair {
+  align-items: flex-end;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 8px 0 2px;
+}
+
+.foot-item {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.foot-item-label {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.foot-item-value {
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .profile-overlay .csv-detail-group div {
   grid-template-columns: 70px minmax(0, 1fr);
 }
