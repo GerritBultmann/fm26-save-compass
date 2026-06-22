@@ -1289,6 +1289,8 @@ function PlayerProfileOverlay({
               <MiniStat label="Wert" value={formatMoney(player.latest.value)} />
               <MiniStat label="Gehalt" value={formatMoney(player.latest.wage)} />
               <MiniStat label="Vertrag" value={player.latest.details.contractEnd || "-"} />
+              <MiniStat label="Fähigkeit" value={<StarRating score={player.latest.abilityScore} />} />
+              <MiniStat label="Potenzial" value={<StarRating score={player.latest.potentialScore} />} />
             </div>
           </div>
 
@@ -1308,22 +1310,12 @@ function PlayerProfileOverlay({
                 value={formatDelta(player.valueDelta)}
                 tone={player.valueDelta && player.valueDelta < 0 ? "red" : "green"}
               />
-              <MiniStat label="Faehigkeit" value={<StarRating score={player.latest.abilityScore} />} />
-              <MiniStat label="Potenzial" value={<StarRating score={player.latest.potentialScore} />} />
               <MiniStat label="Wertung" value={player.latest.details.rating || "-"} />
               <MiniStat label="Einsaetze" value={player.latest.details.appearances || "-"} />
               <MiniStat label="Minuten" value={player.latest.details.minutes || "-"} />
-              <MiniStat label="Vertrag" value={player.latest.details.contractEnd || "-"} />
               <MiniStat label="Attribut Ø" value={player.avgAttribute ? player.avgAttribute.toFixed(1) : "-"} />
             </div>
 
-            <div className="csv-detail-board compact">
-              <div className="block-title">
-                <FileSpreadsheet size={17} />
-                <span>CSV-Ansicht</span>
-              </div>
-              <CsvDetails player={player.latest} />
-            </div>
           </section>
 
           <section className="profile-analysis">
@@ -1334,6 +1326,14 @@ function PlayerProfileOverlay({
               player={player}
               selection={selection}
             />
+
+            <div className="csv-detail-board compact">
+              <div className="block-title">
+                <FileSpreadsheet size={17} />
+                <span>CSV-Ansicht</span>
+              </div>
+              <CsvDetails player={player.latest} />
+            </div>
 
             <div className="chart-block compact">
               <div className="block-title">
@@ -1500,15 +1500,6 @@ function CsvDetails({ player }: { player: PlayerSnapshot }) {
         ["Persönlichkeit", details.personality],
         ["Linker Fuß", details.leftFoot],
         ["Rechter Fuß", details.rightFoot],
-      ],
-    },
-    {
-      title: "Vertrag",
-      fields: [
-        ["Verein", player.club],
-        ["Transferwert", readAny(player.raw, ["Transferwert", "Transfer Value", "Market Value", "Value"]) || formatMoney(player.value)],
-        ["Gehalt", readAny(player.raw, ["Gehalt", "Wage", "Salary"]) || formatMoney(player.wage)],
-        ["Endet", details.contractEnd],
       ],
     },
   ];
@@ -2712,7 +2703,7 @@ function fileToDataUrl(file: Blob) {
 
 async function fetchPublicLibrary() {
   try {
-    const response = await fetch("/data/library.json", { cache: "no-store" });
+    const response = await fetch("/api/library", { cache: "no-store" });
     if (!response.ok) {
       return null;
     }

@@ -1,3 +1,34 @@
+export async function GET() {
+  const githubToken = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_OWNER;
+  const repo = process.env.GITHUB_REPO;
+  const branch = process.env.GITHUB_BRANCH || "main";
+  const dataPath = process.env.GITHUB_DATA_PATH || "public/data/library.json";
+
+  if (!githubToken || !owner || !repo) {
+    return new Response(null, { status: 404 });
+  }
+
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}?ref=${encodeURIComponent(branch)}`;
+  const response = await fetch(apiUrl, {
+    headers: {
+      accept: "application/vnd.github.raw+json",
+      authorization: `Bearer ${githubToken}`,
+      "user-agent": "fm26-save-compass",
+      "x-github-api-version": "2022-11-28",
+    },
+  });
+
+  if (!response.ok) {
+    return new Response(null, { status: 404 });
+  }
+
+  const content = await response.text();
+  return new Response(content, {
+    headers: { "content-type": "application/json" },
+  });
+}
+
 type LibraryPayload = {
   playerImages?: Record<string, string>;
   snapshots?: unknown[];
