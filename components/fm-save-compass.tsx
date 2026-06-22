@@ -1453,57 +1453,47 @@ function StatusCell({ player }: { player: PlayerSnapshot }) {
   );
 }
 
-function footColor(val: string | undefined): string {
-  if (!val) return "#4b5563";
+const FOOT_LEVEL_COLORS = ["", "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e", "#4ade80"] as const;
+
+function footLevel(val: string | undefined): number {
+  if (!val) return 0;
   const v = val.toLowerCase().replace(/\s+/g, " ").trim();
-  if (v === "sehr stark" || v === "very strong") return "#4ade80";
-  if (v === "stark" || v === "strong" || v === "sehr gut" || v === "very good") return "#22c55e";
-  if (v === "gut" || v === "good" || v === "ordentlich" || v === "reasonable") return "#16a34a";
-  if (v === "durchschnitt" || v === "average") return "#6b7280";
-  if (v === "schwach" || v === "weak" || v === "schlecht") return "#f97316";
-  if (v === "sehr schwach" || v === "very weak" || v === "sehr schlecht") return "#ef4444";
-  return "#6b7280";
+  if (v === "sehr stark" || v === "very strong" || v === "sehr gut" || v === "very good") return 6;
+  if (v === "stark" || v === "strong" || v === "gut" || v === "good") return 5;
+  if (v === "ziemlich stark" || v === "fairly strong" || v === "reasonable" || v === "ordentlich") return 4;
+  if (v === "passabel" || v === "passable" || v === "durchschnitt" || v === "average") return 3;
+  if (v === "schwach" || v === "weak" || v === "schlecht") return 2;
+  if (v === "sehr schwach" || v === "very weak" || v === "sehr schlecht") return 1;
+  return 0;
 }
 
-function FootIcon({ side, color }: { side: "left" | "right"; color: string }) {
+function FootBar({ label, value }: { label: string; value?: string }) {
+  const lvl = footLevel(value);
+  const color = lvl > 0 ? FOOT_LEVEL_COLORS[lvl] : undefined;
   return (
-    <svg
-      aria-hidden="true"
-      height="36"
-      style={{ display: "block", transform: side === "left" ? "scaleX(-1)" : undefined }}
-      viewBox="0 0 28 46"
-      width="22"
-    >
-      <path
-        d="M4,18 C3,24 3,32 5,38 C7,43 11,46 15,46 C19,46 23,43 25,38 C27,32 26,24 24,18 C22,12 20,9 18,9 C14,9 8,11 4,18 Z"
-        fill={color}
-      />
-      <ellipse cx="6"  cy="12" fill={color} rx="3.5" ry="5"   />
-      <ellipse cx="11" cy="8"  fill={color} rx="3"   ry="4.5" />
-      <ellipse cx="16" cy="7"  fill={color} rx="2.5" ry="4"   />
-      <ellipse cx="21" cy="9"  fill={color} rx="2"   ry="3.5" />
-      <ellipse cx="24" cy="13" fill={color} rx="1.5" ry="2.5" />
-    </svg>
+    <div className="foot-bar-row">
+      <span className="foot-bar-label">{label}</span>
+      <div className="foot-bar-segments">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span
+            key={i}
+            className="foot-bar-seg"
+            style={i < lvl ? { background: color } : undefined}
+          />
+        ))}
+      </div>
+      <span className="foot-bar-value" style={color ? { color } : undefined}>
+        {value || "–"}
+      </span>
+    </div>
   );
 }
 
 function FootPair({ left, right }: { left?: string; right?: string }) {
-  const items = [
-    { side: "left" as const, label: "Links", value: left },
-    { side: "right" as const, label: "Rechts", value: right },
-  ];
   return (
     <div className="foot-pair">
-      {items.map(({ side, label, value }) => {
-        const c = footColor(value);
-        return (
-          <div className="foot-item" key={side}>
-            <FootIcon color={c} side={side} />
-            <span className="foot-item-label">{label}</span>
-            <span className="foot-item-value" style={{ color: c }}>{value || "–"}</span>
-          </div>
-        );
-      })}
+      <FootBar label="Links" value={left} />
+      <FootBar label="Rechts" value={right} />
     </div>
   );
 }

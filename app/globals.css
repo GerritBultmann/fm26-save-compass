@@ -1553,28 +1553,41 @@ h1 {
 }
 
 .foot-pair {
-  align-items: flex-end;
   display: flex;
-  gap: 16px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
   padding: 8px 0 2px;
 }
 
-.foot-item {
+.foot-bar-row {
   align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 36px auto 1fr;
 }
 
-.foot-item-label {
+.foot-bar-label {
   color: var(--muted);
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.foot-item-value {
+.foot-bar-segments {
+  display: flex;
+  gap: 2px;
+}
+
+.foot-bar-seg {
+  background: #1e2a3a;
+  border-radius: 2px;
+  display: block;
+  height: 8px;
+  width: 11px;
+}
+
+.foot-bar-value {
+  color: var(--muted);
   font-size: 11px;
   font-weight: 500;
 }
