@@ -1617,19 +1617,42 @@ h1 {
 }
 
 .card-viewer .profile-avatar.card-portrait {
-  height: clamp(190px, 28.5vh, 260px);
-  min-width: clamp(190px, 28.5vh, 260px);
-  top: clamp(52px, 7.5vh, 68px);
-  width: clamp(190px, 28.5vh, 260px);
+  border-radius: 0;
+  height: 88%;
+  left: 0;
+  min-width: 100%;
+  top: 0;
+  transform: none;
+  width: 100%;
+  z-index: 2;
 }
 
 .card-viewer .profile-avatar.card-portrait > span {
-  font-size: 48px;
+  font-size: 72px;
+}
+
+/* Gradient fade: card color from bottom, fades to transparent just above text */
+.card-viewer .player-card::before {
+  background: linear-gradient(
+    to top,
+    var(--card-bg) 0%,
+    var(--card-bg) 18%,
+    transparent 25%
+  );
+  bottom: 0;
+  content: "";
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 3;
 }
 
 .card-viewer .card-name-block {
   bottom: clamp(72px, 10.5vh, 96px);
   padding: 0 22px;
+  z-index: 5;
 }
 
 .card-viewer .card-firstname {
@@ -1643,6 +1666,7 @@ h1 {
 
 .card-viewer .card-stats {
   bottom: 14px;
+  z-index: 5;
 }
 
 .card-viewer .card-stat > span {

@@ -1661,8 +1661,8 @@ function PlayerCard({ award, image, player }: { award?: AwardType; image?: strin
       </div>
       <div className="card-stats">
         <div className="card-stat">
-          <span>Score</span>
-          <strong>{score}</strong>
+          <span>Alter</span>
+          <strong>{player.latest.age ?? "—"}</strong>
         </div>
         <div className="card-stat card-stat--center">
           <span>Pos.</span>
