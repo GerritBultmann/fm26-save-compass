@@ -85,15 +85,17 @@ button:disabled {
 
 .crest {
   align-items: center;
-  background: linear-gradient(145deg, #123d44, #1b7c74);
-  border: 1px solid rgba(127, 237, 135, 0.42);
-  border-radius: 8px;
-  color: white;
   display: grid;
   height: 48px;
-  justify-items: center;
   min-width: 48px;
   place-items: center;
+}
+
+.crest-img {
+  display: block;
+  height: 42px;
+  object-fit: contain;
+  width: 42px;
 }
 
 .eyebrow {
@@ -794,26 +796,58 @@ h1 {
 
 .player-table {
   border-collapse: collapse;
-  min-width: 1160px;
+  min-width: 1340px;
   width: 100%;
 }
 
 .player-table th,
 .player-table td {
   border-bottom: 1px solid var(--line-soft);
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
 }
 
+/* Compact columns */
+.player-table .col-num,
+.player-table th:first-child {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  width: 36px;
+}
+
+/* Numeric columns right-align */
+.player-table th:nth-child(n+5):not(:nth-child(2)):not(:nth-child(3)):not(:nth-child(4)),
+.player-table td:nth-child(n+5):not(:nth-child(2)):not(:nth-child(3)):not(:nth-child(4)) {
+  text-align: right;
+}
+
+/* Stars columns */
+.player-table td:nth-child(12),
+.player-table td:nth-child(13) {
+  text-align: center;
+}
+
 .player-table th {
   background: #0d1425;
   color: var(--muted);
+  cursor: pointer;
   font-size: 12px;
   position: sticky;
   top: 0;
+  transition: color 0.12s;
+  user-select: none;
   z-index: 1;
+}
+
+.player-table th:hover {
+  color: #fff;
+}
+
+.player-table th.sort-active {
+  color: var(--teal, #3fa2ff);
 }
 
 .player-table tbody tr {
@@ -1063,6 +1097,61 @@ h1 {
   outline-offset: 4px;
 }
 
+.profile-card-selector {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.profile-card-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  max-width: 180px;
+}
+
+.profile-card-tabs button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 700;
+  gap: 3px;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.profile-card-tabs button.active,
+.profile-card-tabs button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.profile-card-tabs button.pct-spieler-der-saison       { border-color: rgba(212, 171, 48,  0.35); color: #d4ab30; }
+.profile-card-tabs button.pct-spieler-der-saison.active,
+.profile-card-tabs button.pct-spieler-der-saison:hover { background: rgba(212, 171, 48, 0.14); border-color: rgba(212, 171, 48, 0.6); color: #d4ab30; }
+
+.profile-card-tabs button.pct-jugend-der-saison       { border-color: rgba(0, 229, 204, 0.35); color: #00e5cc; }
+.profile-card-tabs button.pct-jugend-der-saison.active,
+.profile-card-tabs button.pct-jugend-der-saison:hover { background: rgba(0, 229, 204, 0.12); border-color: rgba(0, 229, 204, 0.6); color: #00e5cc; }
+
+.profile-card-tabs button.pct-topscorer-der-saison       { border-color: rgba(204, 31, 42, 0.35); color: #cc1f2a; }
+.profile-card-tabs button.pct-topscorer-der-saison.active,
+.profile-card-tabs button.pct-topscorer-der-saison:hover { background: rgba(204, 31, 42, 0.14); border-color: rgba(204, 31, 42, 0.6); color: #cc1f2a; }
+
+.profile-card-tabs button.pct-tor-der-saison       { border-color: rgba(184, 188, 200, 0.30); color: #b8bcc8; }
+.profile-card-tabs button.pct-tor-der-saison.active,
+.profile-card-tabs button.pct-tor-der-saison:hover { background: rgba(184, 188, 200, 0.10); border-color: rgba(184, 188, 200, 0.55); color: #b8bcc8; }
+
 .profile-overlay-body {
   display: grid;
   gap: clamp(8px, 0.75vw, 12px);
@@ -1132,114 +1221,248 @@ h1 {
   width: clamp(68px, 6vw, 86px);
 }
 
+/* ── Base card ─────────────────────────────────────────────────────── */
+
 .player-card {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0 8%, transparent 8% 100%),
-    linear-gradient(158deg, #19d4ff 0%, #087cf2 42%, #113bd4 70%, #080d5f 100%);
-  border: 1px solid rgba(135, 227, 255, 0.82);
-  border-radius: 12px;
-  box-shadow: none;
+  --card-accent: #66a6ff;
+  --card-bg:     #090d1c;
+  --wash-color:  rgba(102, 166, 255, 0.16);
+  background: var(--card-bg);
+  border-radius: 12px 12px 3px 3px;
+  /* Sorare-style chamfered bottom */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 20px),
+    calc(100% - 15px) 100%,
+    15px 100%,
+    0 calc(100% - 20px)
+  );
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.65));
   height: clamp(190px, 22vh, 244px);
   overflow: hidden;
-  padding: 12px;
+  padding: 0;
   position: relative;
   width: clamp(144px, 10.5vw, 180px);
 }
 
-.player-card::before {
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 9px 9px 15px 15px;
+.player-card::before { display: none; }
+
+/* Bottom vignette — avatar fades into name */
+.player-card::after {
+  background: linear-gradient(180deg, transparent 0%, var(--card-bg) 100%);
+  bottom: 0;
   content: "";
-  inset: 6px;
+  height: 46%;
+  left: 0;
   pointer-events: none;
   position: absolute;
+  right: 0;
   z-index: 2;
 }
 
-.player-card::after {
-  background:
-    linear-gradient(45deg, transparent 0 47%, rgba(255, 255, 255, 0.28) 47% 50%, transparent 50%),
-    linear-gradient(135deg, transparent 0 47%, rgba(255, 255, 255, 0.22) 47% 50%, transparent 50%),
-    linear-gradient(180deg, transparent 0%, rgba(0, 21, 118, 0.46) 100%);
-  background-size: 28px 28px, 28px 28px, auto;
-  bottom: 0;
-  content: "";
-  height: 72%;
-  left: -1px;
-  pointer-events: none;
-  position: absolute;
-  right: -1px;
-  z-index: 0;
-}
+/* Position-specific palette */
+.player-card.pos-tor        { --card-accent: #2ecc71; --card-bg: #001a09; --wash-color: rgba(46, 204, 113, 0.18); }
+.player-card.pos-abwehr     { --card-accent: #66a6ff; --card-bg: #030b1a; --wash-color: rgba(102, 166, 255, 0.16); }
+.player-card.pos-mittelfeld { --card-accent: #c26bff; --card-bg: #0b0316; --wash-color: rgba(194, 107, 255, 0.16); }
+.player-card.pos-angriff    { --card-accent: #ff6b7a; --card-bg: #160208; --wash-color: rgba(255, 107, 122, 0.17); }
 
-.player-card-pattern {
-  background:
-    linear-gradient(45deg, transparent 0 48%, rgba(255, 255, 255, 0.24) 48% 51%, transparent 51%),
-    linear-gradient(135deg, transparent 0 48%, rgba(255, 255, 255, 0.18) 48% 51%, transparent 51%);
-  background-size: 34px 34px;
+/* Diamond mesh — the Sorare grid texture */
+.card-mesh {
+  background-image:
+    linear-gradient(60deg,  transparent calc(50% - 0.5px), rgba(255,255,255,0.045) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(120deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.045) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  background-size: 20px 20px;
   inset: 0;
-  opacity: 0.22;
   pointer-events: none;
   position: absolute;
   z-index: 0;
 }
 
-.player-card-shine {
-  background:
-    linear-gradient(120deg, transparent 0 32%, rgba(255, 255, 255, 0.2) 32% 36%, transparent 36%),
-    linear-gradient(300deg, transparent 0 72%, rgba(87, 252, 255, 0.24) 72% 84%, transparent 84%);
+/* Radial accent wash from top */
+.card-wash {
+  background: radial-gradient(ellipse at 50% -10%, var(--wash-color) 0%, transparent 65%);
   inset: 0;
-  opacity: 0.5;
   pointer-events: none;
   position: absolute;
   z-index: 1;
 }
 
-.player-card-topline,
-.player-card-footer {
-  position: absolute;
-  z-index: 1;
-}
-
-.player-card-topline {
+/* ── Header (year · award badge · pos chip) ── */
+.card-header {
   align-items: center;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(42px, 1fr) minmax(48px, auto) minmax(42px, 1fr);
-  justify-items: center;
-  left: 16px;
-  right: 16px;
-  top: 15px;
+  display: flex;
+  justify-content: space-between;
+  left: 0;
+  padding: 9px 9px 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 5;
 }
 
-.player-card-topline small,
-.player-card-topline span,
-.player-card-topline strong {
+.card-year {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card-pos-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: var(--card-accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  padding: 2px 5px;
+  text-transform: uppercase;
+}
+
+.card-club-logo {
+  display: block;
+  flex: 1;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.85;
+  pointer-events: none;
+  width: 16px;
+}
+
+/* Award badge inline in header */
+.player-card-award-badge {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid var(--card-accent);
+  border-radius: 50%;
+  color: var(--card-accent);
+  display: grid;
+  height: 17px;
+  place-items: center;
+  position: relative;
+  width: 17px;
+  z-index: 6;
+}
+
+/* ── Avatar ── */
+.profile-avatar.card-portrait {
   background: transparent;
   border: 0;
-  border-radius: 0;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 900;
-  max-width: 100%;
+  border-radius: 50%;
+  box-shadow: none;
+  height: clamp(82px, 9.6vh, 108px);
+  left: 50%;
+  margin: 0;
+  min-width: clamp(82px, 9.6vh, 108px);
   overflow: hidden;
-  padding: 3px 0;
+  position: absolute;
+  top: clamp(26px, 3vh, 34px);
+  transform: translateX(-50%);
+  width: clamp(82px, 9.6vh, 108px);
+  z-index: 3;
+}
+
+.profile-avatar.card-portrait img {
+  object-position: center top;
+}
+
+.profile-avatar.card-portrait > span {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.22);
+  display: grid;
+  font-size: 20px;
+  font-weight: 800;
+  height: 100%;
+  letter-spacing: 0.05em;
+  place-items: center;
+  width: 100%;
+}
+
+/* ── Name block ── */
+.card-name-block {
+  bottom: clamp(34px, 4vh, 46px);
+  left: 0;
+  overflow: hidden;
+  padding: 0 10px;
+  position: absolute;
+  right: 0;
+  text-align: center;
+  z-index: 4;
+}
+
+.card-firstname {
+  color: rgba(255, 255, 255, 0.55);
+  display: block;
+  font-size: clamp(8px, 0.56vw, 10px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.card-lastname {
+  color: #f0f4ff;
+  display: block;
+  font-size: clamp(11px, 0.78vw, 13px);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.player-card-topline small {
-  justify-self: start;
+/* ── Stats row ── */
+.card-stats {
+  bottom: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  left: 0;
+  position: absolute;
+  right: 0;
+  z-index: 4;
 }
 
-.player-card-topline span {
-  justify-self: center;
+.card-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   text-align: center;
 }
 
-.player-card-topline strong {
-  justify-self: end;
-  text-align: right;
+.card-stat--center {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-stat > span {
+  color: rgba(255, 255, 255, 0.30);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.card-stat > strong {
+  color: var(--card-accent);
+  font-size: clamp(9px, 0.64vw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+/* Suppress all old card sub-elements */
+.player-card-pattern,
+.player-card-shine,
+.player-card-topline,
+.player-card-footer,
+.card-pos-bar,
+.card-glare,
+.card-score {
+  display: none;
 }
 
 .profile-avatar.card-portrait {
@@ -1247,15 +1470,15 @@ h1 {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  height: clamp(141px, 16.5vh, 194px);
+  height: clamp(152px, 17.5vh, 206px);
   left: 50%;
   margin: 0;
-  min-width: clamp(141px, 16.5vh, 194px);
+  min-width: clamp(152px, 17.5vh, 206px);
   overflow: hidden;
   position: absolute;
-  top: clamp(46px, 5.2vh, 62px);
+  top: clamp(12px, 1.4vh, 20px);
   transform: translateX(-50%);
-  width: clamp(141px, 16.5vh, 194px);
+  width: clamp(152px, 17.5vh, 206px);
   z-index: 1;
 }
 
@@ -1265,45 +1488,49 @@ h1 {
 
 .profile-avatar.card-portrait > span {
   align-items: center;
+  color: rgba(255, 255, 255, 0.28);
   display: grid;
-  font-size: 22px;
+  font-size: 28px;
+  font-weight: 700;
   height: 100%;
   justify-items: center;
+  letter-spacing: 0.04em;
   place-items: center;
   width: 100%;
 }
 
+/* Clean bottom strip — no border, no clip-path */
 .player-card-footer {
-  background: linear-gradient(180deg, rgba(0, 142, 255, 0.94), rgba(0, 40, 188, 0.98));
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px 6px 14px 14px;
-  clip-path: polygon(0 12%, 50% 0, 100% 12%, 100% 100%, 0 100%);
-  min-width: 0;
-  bottom: 11px;
-  left: 14px;
-  padding: 12px 10px 8px;
-  right: 14px;
-  z-index: 3;
+  bottom: 0;
+  left: 0;
+  padding: 0 12px 10px 15px;
+  position: absolute;
+  right: 0;
+  z-index: 4;
 }
 
-.player-card-footer strong,
-.player-card-footer span {
+.player-card-footer strong {
+  color: #f0f4ff;
   display: block;
+  font-size: clamp(11px, 0.76vw, 13px);
+  font-weight: 800;
+  letter-spacing: 0.01em;
   overflow: hidden;
-  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.player-card-footer strong {
-  color: #ffffff;
-  font-size: clamp(12px, 0.78vw, 14px);
-}
-
 .player-card-footer span {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 10px;
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.42);
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .card-viewer-overlay {
@@ -1352,52 +1579,78 @@ h1 {
 }
 
 .card-viewer .player-card {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 44px),
+    calc(100% - 32px) 100%,
+    32px 100%,
+    0 calc(100% - 44px)
+  );
+  filter: drop-shadow(0 16px 48px rgba(0, 0, 0, 0.8));
   height: clamp(430px, 66vh, 620px);
-  padding: 22px 28px;
+  padding: 0;
   width: clamp(310px, 44vh, 430px);
 }
 
-.card-viewer .player-card-topline {
-  grid-template-columns: minmax(82px, 1fr) minmax(104px, auto) minmax(82px, 1fr);
-  left: 34px;
-  right: 34px;
-  top: 28px;
+.card-viewer .card-header {
+  padding: 18px 18px 0;
 }
 
-.card-viewer .player-card::before {
-  border-radius: 14px;
-  inset: 10px;
+.card-viewer .card-year {
+  font-size: 12px;
 }
 
-.card-viewer .player-card-topline small,
-.card-viewer .player-card-topline span,
-.card-viewer .player-card-topline strong {
-  font-size: 14px;
-  max-width: 100%;
-  padding: 5px 0;
+.card-viewer .card-pos-chip {
+  font-size: 12px;
+  padding: 4px 9px;
+}
+
+.card-viewer .card-club-logo {
+  height: 28px;
+  width: 28px;
+}
+
+.card-viewer .player-card-award-badge {
+  height: 28px;
+  width: 28px;
 }
 
 .card-viewer .profile-avatar.card-portrait {
-  height: clamp(286px, 42.9vh, 420px);
-  min-width: clamp(286px, 42.9vh, 420px);
-  top: clamp(88px, 13vh, 128px);
-  width: clamp(286px, 42.9vh, 420px);
+  height: clamp(190px, 28.5vh, 260px);
+  min-width: clamp(190px, 28.5vh, 260px);
+  top: clamp(52px, 7.5vh, 68px);
+  width: clamp(190px, 28.5vh, 260px);
 }
 
-.card-viewer .player-card-footer {
-  bottom: 22px;
-  left: 26px;
-  padding: 28px 18px 18px;
-  right: 26px;
+.card-viewer .profile-avatar.card-portrait > span {
+  font-size: 48px;
 }
 
-.card-viewer .player-card-footer strong {
-  font-size: clamp(24px, 3.2vh, 34px);
+.card-viewer .card-name-block {
+  bottom: clamp(72px, 10.5vh, 96px);
+  padding: 0 22px;
 }
 
-.card-viewer .player-card-footer span {
-  font-size: clamp(13px, 1.8vh, 16px);
-  margin-top: 6px;
+.card-viewer .card-firstname {
+  font-size: clamp(11px, 1.6vh, 14px);
+}
+
+.card-viewer .card-lastname {
+  font-size: clamp(26px, 3.8vh, 42px);
+  letter-spacing: -0.01em;
+}
+
+.card-viewer .card-stats {
+  bottom: 14px;
+}
+
+.card-viewer .card-stat > span {
+  font-size: 11px;
+}
+
+.card-viewer .card-stat > strong {
+  font-size: clamp(16px, 2.4vh, 22px);
 }
 
 .avatar-dot img,
@@ -2595,4 +2848,262 @@ h1 {
   .attribute-row {
     grid-template-columns: minmax(82px, 1fr) minmax(96px, 1fr) 28px;
   }
+
+  .album-awards-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ─── Award-Karten-Varianten ───────────────────────────────────────── */
+
+/* Gold — Spieler der Saison */
+.player-card.award-gold {
+  --card-accent: #d4ab30;
+  --card-bg:     #100900;
+  --wash-color:  rgba(212, 171, 48, 0.22);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 18px rgba(180, 130, 0, 0.28));
+}
+
+/* Gem — Jugendspieler der Saison */
+.player-card.award-gem {
+  --card-accent: #00e5cc;
+  --card-bg:     #000e0c;
+  --wash-color:  rgba(0, 229, 204, 0.20);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 18px rgba(0, 180, 160, 0.28));
+}
+
+/* Red — Topscorer */
+.player-card.award-red {
+  --card-accent: #cc1f2a;
+  --card-bg:     #120003;
+  --wash-color:  rgba(204, 31, 42, 0.22);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 18px rgba(180, 0, 24, 0.28));
+}
+
+/* Grey — Tor der Saison */
+.player-card.award-grey {
+  --card-accent: #b8bcc8;
+  --card-bg:     #0a0a10;
+  --wash-color:  rgba(184, 188, 200, 0.14);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 18px rgba(150, 150, 165, 0.20));
+}
+
+/* Shared accent rim for all award cards */
+.player-card[class*="award-"]::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--card-accent) 25%,
+    var(--card-accent) 75%,
+    transparent 100%
+  );
+  content: "";
+  height: 2px;
+  left: 0;
+  opacity: 0.75;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.player-card[class*="award-"] .card-wash {
+  opacity: 1.4;
+}
+
+/* Award-Badge — in header */
+/* ─── Profil-Auszeichnungsbadges ────────────────────────────────────── */
+
+.profile-award-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.profile-award-pill {
+  align-items: center;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+.profile-award-pill.spieler-der-saison {
+  background: rgba(200, 130, 14, 0.28);
+  border-color: rgba(255, 220, 60, 0.5);
+  color: #ffe04b;
+}
+
+.profile-award-pill.jugend-der-saison {
+  background: rgba(0, 184, 168, 0.22);
+  border-color: rgba(60, 255, 230, 0.5);
+  color: #3dfff0;
+}
+
+.profile-award-pill.topscorer-der-saison {
+  background: rgba(180, 10, 40, 0.28);
+  border-color: rgba(255, 80, 100, 0.5);
+  color: #ff6b8a;
+}
+
+.profile-award-pill.tor-der-saison {
+  background: rgba(120, 120, 120, 0.28);
+  border-color: rgba(200, 200, 200, 0.5);
+  color: #dcdcdc;
+}
+
+/* ─── Album-View ────────────────────────────────────────────────────── */
+
+.album-screen {
+  margin: 0 auto;
+  max-width: 1680px;
+  padding: 0 0 40px;
+}
+
+.album-header {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 12px 0 0;
+  flex-wrap: wrap;
+}
+
+.album-header h2 {
+  font-size: clamp(18px, 1.6vw, 24px);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.album-season-tabs {
+  flex-shrink: 0;
+}
+
+.album-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin-bottom: 36px;
+}
+
+.album-group-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+}
+
+.album-group-label {
+  color: var(--purple-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.album-group-count {
+  background: var(--panel-strong);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 1px 7px;
+}
+
+.album-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.album-card-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 140ms ease;
+}
+
+.album-card-btn:hover {
+  transform: translateY(-4px) scale(1.03);
+}
+
+.album-empty {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 24px;
+  padding: 16px 0;
+}
+
+.album-awards-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.album-awards-row {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.album-award-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.album-award-label {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.album-award-slot.award-gold .album-award-label { color: #ffe04b; }
+.album-award-slot.award-gem .album-award-label  { color: #3dfff0; }
+.album-award-slot.award-red .album-award-label  { color: #ff6b8a; }
+.album-award-slot.award-grey .album-award-label { color: #dcdcdc; }
+
+.album-award-empty {
+  align-items: center;
+  border-radius: 12px;
+  border-style: dashed;
+  border-width: 2px;
+  color: rgba(255,255,255,0.35);
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 8px;
+  height: clamp(190px, 22vh, 244px);
+  justify-content: center;
+  text-align: center;
+  width: clamp(144px, 10.5vw, 180px);
+}
+
+.album-award-empty.award-gold  { border-color: rgba(255, 220, 60, 0.35); }
+.album-award-empty.award-gem   { border-color: rgba(60, 255, 230, 0.35); }
+.album-award-empty.award-red   { border-color: rgba(255, 80, 100, 0.35); }
+.album-award-empty.award-grey  { border-color: rgba(200, 200, 200, 0.35); }
+
+.album-award-select {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 8px;
+  width: 100%;
 }

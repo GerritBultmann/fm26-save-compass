@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  Award,
   BarChart3,
   CalendarDays,
   Database,
@@ -19,6 +20,7 @@ import {
   SlidersHorizontal,
   Star,
   Trash2,
+  Trophy,
   TrendingUp,
   Upload,
   UserRound,
@@ -37,6 +39,9 @@ import {
 import Papa from "papaparse";
 import type { Dispatch, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const CLUB_LOGO_URL =
+  "https://upload.wikimedia.org/wikipedia/de/thumb/9/9d/Crewe_alexandra.svg/960px-Crewe_alexandra.svg.png";
 
 type RawRow = Record<string, string>;
 
@@ -106,7 +111,23 @@ type Snapshot = {
 type StoredLibrary = {
   snapshots: Snapshot[];
   playerImages?: Record<string, string>;
+  awards?: SeasonAward[];
 };
+
+type AwardType = "spieler-der-saison" | "jugend-der-saison" | "topscorer-der-saison" | "tor-der-saison";
+
+type SeasonAward = {
+  type: AwardType;
+  playerKey: string;
+  season: string;
+};
+
+const AWARD_DEFS: Array<{ type: AwardType; label: string; cardClass: string }> = [
+  { type: "spieler-der-saison", label: "Spieler der Saison", cardClass: "award-gold" },
+  { type: "jugend-der-saison", label: "Jugendspieler der Saison", cardClass: "award-gem" },
+  { type: "topscorer-der-saison", label: "Topscorer der Saison", cardClass: "award-red" },
+  { type: "tor-der-saison", label: "Tor der Saison", cardClass: "award-grey" },
+];
 
 type PlayerHistoryPoint = {
   snapshotId: string;
@@ -149,9 +170,10 @@ type Mapping = {
   attributes: Array<{ def: AttributeDef; header: string }>;
 };
 
-type SortMode = "value" | "growth" | "potential" | "recommendation" | "name";
+type SortMode = "num" | "name" | "pos" | "age" | "appearances" | "minutes" | "rating" | "goals" | "assists" | "value" | "growth" | "potential" | "ability" | "recommendation";
+type SortDir = "asc" | "desc";
 type PositionBucket = "Alle" | "Tor" | "Abwehr" | "Mittelfeld" | "Angriff";
-type NavMode = "Portal" | "Recruitment" | "Development" | "Market" | "Tactics";
+type NavMode = "Portal" | "Recruitment" | "Development" | "Album" | "Tactics";
 type RoleMode = "ip" | "oop";
 
 type RoleSelection = {
@@ -244,17 +266,10 @@ const NAV_MODES: Array<{ id: NavMode; icon: typeof Database; label: string }> = 
   { id: "Portal", icon: Database, label: "Übersicht" },
   { id: "Recruitment", icon: Search, label: "Spielersuche" },
   { id: "Development", icon: Activity, label: "Entwicklung" },
-  { id: "Market", icon: TrendingUp, label: "Markt" },
+  { id: "Album", icon: Trophy, label: "Album" },
   { id: "Tactics", icon: MapPinned, label: "Taktik" },
 ];
 
-const SORT_LABELS: Record<SortMode, string> = {
-  value: "Marktwert",
-  growth: "Wertzuwachs",
-  potential: "Potenzial",
-  recommendation: "Chance",
-  name: "Name",
-};
 
 export default function FmSaveCompass() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -266,6 +281,7 @@ export default function FmSaveCompass() {
   const [query, setQuery] = useState("");
   const [bucket, setBucket] = useState<PositionBucket>("Alle");
   const [sortMode, setSortMode] = useState<SortMode>("recommendation");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [navMode, setNavMode] = useState<NavMode>("Portal");
   const [roleMode, setRoleMode] = useState<RoleMode>("ip");
   const [roleSelection, setRoleSelection] = useState<RoleSelection>({
@@ -275,6 +291,7 @@ export default function FmSaveCompass() {
   });
   const [tacticAssignments, setTacticAssignments] = useState<TacticAssignments>({});
   const [playerImages, setPlayerImages] = useState<Record<string, string>>({});
+  const [awards, setAwards] = useState<SeasonAward[]>([]);
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [seasonLabel, setSeasonLabel] = useState("");
@@ -291,6 +308,7 @@ export default function FmSaveCompass() {
           const migrated = hydrateSnapshots(publicLibrary.snapshots);
           setSnapshots(migrated);
           setPlayerImages(publicLibrary.playerImages ?? {});
+          setAwards(publicLibrary.awards ?? []);
           setIsDemo(false);
           setSelectedKey(firstPlayerKey(migrated));
           setNotice("Oeffentliche Kaderdaten geladen.");
@@ -302,6 +320,7 @@ export default function FmSaveCompass() {
           const migrated = hydrateSnapshots(stored.snapshots);
           setSnapshots(migrated);
           setPlayerImages(stored.playerImages ?? {});
+          setAwards(stored.awards ?? []);
           setIsDemo(false);
           setSelectedKey(firstPlayerKey(migrated));
         } else if (!cancelled) {
@@ -336,10 +355,10 @@ export default function FmSaveCompass() {
       return;
     }
 
-    idbSet(STATE_KEY, { snapshots, playerImages }).catch(() => {
+    idbSet(STATE_KEY, { snapshots, playerImages, awards }).catch(() => {
       setNotice("Speichern im Browser ist fehlgeschlagen.");
     });
-  }, [hydrated, isDemo, playerImages, snapshots]);
+  }, [awards, hydrated, isDemo, playerImages, snapshots]);
 
   const players = useMemo(() => buildAggregates(snapshots), [snapshots]);
   const latestSnapshot = snapshots.at(-1) ?? null;
@@ -362,8 +381,8 @@ export default function FmSaveCompass() {
         );
         return (!needle || haystack.includes(needle)) && matchesBucket(latest.position, bucket);
       })
-      .sort((a, b) => sortPlayers(a, b, sortMode));
-  }, [bucket, players, query, sortMode]);
+      .sort((a, b) => sortPlayers(a, b, sortMode, sortDir));
+  }, [bucket, players, query, sortMode, sortDir]);
 
   const selectedPlayer = useMemo(() => {
     return players.find((player) => player.key === selectedKey) ?? visiblePlayers[0] ?? players[0] ?? null;
@@ -390,7 +409,7 @@ export default function FmSaveCompass() {
       setNotice(`Bild fuer ${selectedPlayer.name} gespeichert.`);
 
       if (isAdmin) {
-        void publishLibrary(snapshots, nextImages, adminPassword)
+        void publishLibrary(snapshots, nextImages, awards, adminPassword)
           .then(() => setNotice(`Bild fuer ${selectedPlayer.name} gespeichert und veroeffentlicht.`))
           .catch((error) => {
             const message = error instanceof Error ? error.message : "Upload fehlgeschlagen";
@@ -490,7 +509,7 @@ export default function FmSaveCompass() {
       setNotice(
         `${snapshot.season}: ${snapshot.players.length} Spieler aus ${snapshot.rowCount} Zeilen importiert.`
       );
-      await publishLibrary(next, playerImages, adminPassword);
+      await publishLibrary(next, playerImages, awards, adminPassword);
       setNotice(
         `${snapshot.season}: ${snapshot.players.length} Spieler importiert und veroeffentlicht.`
       );
@@ -531,10 +550,30 @@ export default function FmSaveCompass() {
       Portal: "recommendation",
       Recruitment: "potential",
       Development: "growth",
-      Market: "value",
+      Album: "value",
       Tactics: "recommendation",
     };
     setSortMode(modeSort[mode]);
+    setSortDir("desc");
+  }
+
+  function handleColSort(col: SortMode) {
+    if (sortMode === col) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortMode(col);
+      setSortDir(col === "name" || col === "pos" ? "asc" : "desc");
+    }
+  }
+
+  async function handleAwardsChange(next: SeasonAward[]) {
+    setAwards(next);
+    if (isAdmin) {
+      await publishLibrary(snapshots, playerImages, next, adminPassword).catch((error) => {
+        const message = error instanceof Error ? error.message : "Fehler";
+        setNotice(`Auszeichnungen lokal gespeichert, Veroeffentlichung fehlgeschlagen: ${message}`);
+      });
+    }
   }
 
   function openPlayerProfile(playerKey: string) {
@@ -546,6 +585,7 @@ export default function FmSaveCompass() {
     const demo = createDemoSnapshots();
     setSnapshots(demo);
     setPlayerImages({});
+    setAwards([]);
     setIsDemo(true);
     setSelectedKey(firstPlayerKey(demo));
     setQuery("");
@@ -586,7 +626,7 @@ export default function FmSaveCompass() {
       <header className="topbar">
         <div className="brand-lockup">
           <div className="crest" aria-hidden="true">
-            <Shield size={24} />
+            <img alt="Crewe Alexandra" className="crest-img" src={CLUB_LOGO_URL} />
           </div>
           <div>
             <span className="eyebrow">FM26 Spielstand-Kompass</span>
@@ -715,6 +755,16 @@ export default function FmSaveCompass() {
           onOpenProfile={openPlayerProfile}
           players={players}
         />
+      ) : navMode === "Album" ? (
+        <AlbumView
+          awards={awards}
+          images={playerImages}
+          isAdmin={isAdmin}
+          onAwardsChange={handleAwardsChange}
+          onOpenProfile={openPlayerProfile}
+          players={players}
+          snapshots={snapshots}
+        />
       ) : (
       <>
       <section className="metrics-grid" aria-label="Kader-Kennzahlen">
@@ -757,20 +807,6 @@ export default function FmSaveCompass() {
                 ))}
               </div>
 
-              <label className="sort-control">
-                <SlidersHorizontal size={15} />
-                <select
-                  aria-label="Sortierung"
-                  onChange={(event) => setSortMode(event.target.value as SortMode)}
-                  value={sortMode}
-                >
-                  {Object.entries(SORT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
           </div>
 
@@ -778,17 +814,36 @@ export default function FmSaveCompass() {
             <table className="player-table">
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>Spieler</th>
-                  <th>Pos.</th>
-                  <th>Alter</th>
-                  <th>Verein</th>
-                  <th>Eins.</th>
-                  <th>Min</th>
-                  <th>Note</th>
-                  <th>Wert</th>
-                  <th>Entwicklung</th>
-                  <th>Chance</th>
+                  {(
+                    [
+                      { col: "num", label: "#" },
+                      { col: "name", label: "Spieler" },
+                      { col: "pos", label: "Pos." },
+                      { col: "age", label: "Alter" },
+                      { col: "appearances", label: "Eins." },
+                      { col: "minutes", label: "Min" },
+                      { col: "rating", label: "Note" },
+                      { col: "goals", label: "Tore" },
+                      { col: "assists", label: "Assist" },
+                      { col: "value", label: "Wert" },
+                      { col: "growth", label: "Entwicklung" },
+                      { col: "potential", label: "Potenzial" },
+                      { col: "ability", label: "Fähigkeit" },
+                      { col: "recommendation", label: "Score" },
+                    ] as Array<{ col: SortMode; label: string }>
+                  ).map(({ col, label }) => {
+                    const active = sortMode === col;
+                    return (
+                      <th
+                        className={active ? "sort-active" : ""}
+                        key={col}
+                        onClick={() => handleColSort(col)}
+                      >
+                        {label}
+                        {active ? (sortDir === "desc" ? " ↓" : " ↑") : ""}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -798,9 +853,7 @@ export default function FmSaveCompass() {
                     key={player.key}
                     onClick={() => openPlayerProfile(player.key)}
                   >
-                    <td>
-                      <StatusCell player={player.latest} />
-                    </td>
+                    <td className="col-num">{player.latest.details.squadNumber || "-"}</td>
                     <td>
                       <div className="player-cell">
                         <PlayerAvatar
@@ -816,14 +869,17 @@ export default function FmSaveCompass() {
                     </td>
                     <td>{compactPosition(player.latest.position)}</td>
                     <td>{player.latest.age ?? "-"}</td>
-                    <td>{player.latest.club || "-"}</td>
                     <td>{player.latest.details.appearances || "-"}</td>
                     <td>{player.latest.details.minutes || "-"}</td>
                     <td>{player.latest.details.rating || "-"}</td>
+                    <td>{player.latest.details.goals || "-"}</td>
+                    <td>{player.latest.details.assists || "-"}</td>
                     <td>{formatMoney(player.latest.value)}</td>
                     <td>
                       <TrendBadge delta={player.valueDelta} pct={player.valueDeltaPct} />
                     </td>
+                    <td><StarRating score={player.latest.potentialScore} /></td>
+                    <td><StarRating score={player.latest.abilityScore} /></td>
                     <td>
                       <span className="score-badge">{Math.round(player.recommendation)}</span>
                     </td>
@@ -948,6 +1004,7 @@ export default function FmSaveCompass() {
 
       {selectedPlayer && isProfileOpen ? (
         <PlayerProfileOverlay
+          awards={awards.filter((a) => a.playerKey === selectedPlayer.key)}
           image={playerImages[selectedPlayer.key]}
           mode={roleMode}
           onClose={() => setIsProfileOpen(false)}
@@ -1009,6 +1066,11 @@ function TacticBuilder({
     }
 
     onAssignmentsChange((current) => {
+      const alreadyInSlot = Object.values(current).some((a) => a?.playerKey === playerKey);
+      const filledCount = Object.values(current).filter(Boolean).length;
+      if (!alreadyInSlot && !current[positionId] && filledCount >= 11) {
+        return current;
+      }
       const next: TacticAssignments = { ...current };
       Object.entries(next).forEach(([slotId, assignment]) => {
         if (assignment?.playerKey === playerKey) {
@@ -1227,7 +1289,162 @@ function TacticBuilder({
   );
 }
 
+function AlbumView({
+  awards,
+  images,
+  isAdmin,
+  onAwardsChange,
+  onOpenProfile,
+  players,
+  snapshots,
+}: {
+  awards: SeasonAward[];
+  images: Record<string, string>;
+  isAdmin: boolean;
+  onAwardsChange: (next: SeasonAward[]) => void;
+  onOpenProfile: (playerKey: string) => void;
+  players: PlayerAggregate[];
+  snapshots: Snapshot[];
+}) {
+  const seasons = [...new Set(snapshots.map((s) => s.season))];
+  const [activeSeason, setActiveSeason] = useState<string>(seasons[seasons.length - 1] ?? "");
+  const currentSeason = activeSeason || seasons[seasons.length - 1] || "";
+
+  const seasonSnapshot = snapshots.find((s) => s.season === currentSeason) ?? null;
+  const seasonPlayerKeys = new Set(seasonSnapshot?.players.map((p) => p.key) ?? []);
+  const seasonPlayers = players.filter((p) => seasonPlayerKeys.has(p.key));
+  const seasonAwards = awards.filter((a) => a.season === currentSeason);
+
+  const ALBUM_GROUPS: Array<{ label: string; bucket: PositionBucket }> = [
+    { label: "Tor", bucket: "Tor" },
+    { label: "Abwehr", bucket: "Abwehr" },
+    { label: "Mittelfeld", bucket: "Mittelfeld" },
+    { label: "Sturm", bucket: "Angriff" },
+  ];
+
+  function assignAward(type: AwardType, playerKey: string) {
+    const next = awards.filter((a) => !(a.type === type && a.season === currentSeason));
+    if (playerKey) {
+      next.push({ playerKey, season: currentSeason, type });
+    }
+    onAwardsChange(next);
+  }
+
+  return (
+    <section className="album-screen" aria-label="Saison-Album">
+      <div className="album-header">
+        <div>
+          <span className="eyebrow">Saison-Album</span>
+          <h2>Spielerkarten</h2>
+        </div>
+        {seasons.length > 1 ? (
+          <div className="segmented album-season-tabs" aria-label="Saison wählen">
+            {seasons.map((s) => (
+              <button
+                className={currentSeason === s ? "active" : ""}
+                key={s}
+                onClick={() => setActiveSeason(s)}
+                type="button"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {seasonPlayers.length > 0 ? (
+        <div className="album-groups">
+          {ALBUM_GROUPS.map(({ label, bucket }) => {
+            const groupPlayers = seasonPlayers.filter((p) =>
+              primaryBucket(p.latest.position) === bucket
+            );
+            if (!groupPlayers.length) return null;
+            return (
+              <div className="album-group" key={bucket}>
+                <div className="album-group-header">
+                  <span className="album-group-label">{label}</span>
+                  <span className="album-group-count">{groupPlayers.length}</span>
+                </div>
+                <div className="album-card-grid">
+                  {groupPlayers.map((player) => {
+                    const award = seasonAwards.find((a) => a.playerKey === player.key);
+                    return (
+                      <button
+                        aria-label={`Karte ${player.name}`}
+                        className="album-card-btn"
+                        key={player.key}
+                        onClick={() => onOpenProfile(player.key)}
+                        type="button"
+                      >
+                        <PlayerCard award={award?.type} image={images[player.key]} player={player} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="album-empty">Keine Spieler für diese Saison.</div>
+      )}
+
+      <div className="album-awards-section">
+        <div className="block-title">
+          <Trophy size={17} />
+          <span>Auszeichnungen {currentSeason}</span>
+        </div>
+        <div className="album-awards-row">
+          {AWARD_DEFS.map((def) => {
+            const award = seasonAwards.find((a) => a.type === def.type);
+            const awardedPlayer = award ? players.find((p) => p.key === award.playerKey) : null;
+            return (
+              <div className={`album-award-slot ${def.cardClass}`} key={def.type}>
+                <div className="album-award-label">
+                  <Award size={13} />
+                  <span>{def.label}</span>
+                </div>
+                {awardedPlayer ? (
+                  <button
+                    className="album-card-btn"
+                    onClick={() => onOpenProfile(awardedPlayer.key)}
+                    type="button"
+                  >
+                    <PlayerCard award={def.type} image={images[awardedPlayer.key]} player={awardedPlayer} />
+                  </button>
+                ) : (
+                  <div className={`album-award-empty player-card ${def.cardClass}`}>
+                    <Award size={28} />
+                    <span>{def.label}</span>
+                  </div>
+                )}
+                {isAdmin && currentSeason ? (
+                  <select
+                    aria-label={`${def.label} vergeben`}
+                    className="album-award-select"
+                    onChange={(e) => assignAward(def.type, e.target.value)}
+                    value={award?.playerKey ?? ""}
+                  >
+                    <option value="">— Spieler wählen —</option>
+                    {seasonPlayers.map((p) => (
+                      <option key={p.key} value={p.key}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PlayerProfileOverlay({
+  awards,
   image,
   mode,
   onClose,
@@ -1236,6 +1453,7 @@ function PlayerProfileOverlay({
   player,
   selection,
 }: {
+  awards: SeasonAward[];
   image?: string;
   mode: RoleMode;
   onClose: () => void;
@@ -1245,6 +1463,7 @@ function PlayerProfileOverlay({
   selection: RoleSelection;
 }) {
   const [isCardViewerOpen, setIsCardViewerOpen] = useState(false);
+  const [selectedCardAward, setSelectedCardAward] = useState<AwardType | undefined>(undefined);
   const [cardTilt, setCardTilt] = useState({ rotateX: 0, rotateY: 0 });
   const profileMeta = [
     player.latest.club,
@@ -1272,18 +1491,59 @@ function PlayerProfileOverlay({
       <div className="profile-shell">
         <header className="profile-overlay-head">
           <div className="profile-title-lockup">
-            <button
-              className="card-popout-trigger"
-              onClick={() => setIsCardViewerOpen(true)}
-              title="Karte gross ansehen"
-              type="button"
-            >
-              <PlayerCard player={player} image={image} />
-            </button>
+            <div className="profile-card-selector">
+              <button
+                className="card-popout-trigger"
+                onClick={() => setIsCardViewerOpen(true)}
+                title="Karte gross ansehen"
+                type="button"
+              >
+                <PlayerCard award={selectedCardAward} player={player} image={image} />
+              </button>
+              {awards.length > 0 ? (
+                <div className="profile-card-tabs">
+                  <button
+                    className={selectedCardAward === undefined ? "active" : ""}
+                    onClick={() => setSelectedCardAward(undefined)}
+                    type="button"
+                  >
+                    Standard
+                  </button>
+                  {awards.map((a) => {
+                    const def = AWARD_DEFS.find((d) => d.type === a.type);
+                    return def ? (
+                      <button
+                        className={[`pct-${a.type}`, selectedCardAward === a.type ? "active" : ""].filter(Boolean).join(" ")}
+                        key={`${a.type}-${a.season}`}
+                        onClick={() => setSelectedCardAward(a.type)}
+                        title={def.label}
+                        type="button"
+                      >
+                        <Award size={9} />
+                        <span>{a.season}</span>
+                      </button>
+                    ) : null;
+                  })}
+                </div>
+              ) : null}
+            </div>
             <div>
               <span className="eyebrow">{player.latest.position || "Position offen"}</span>
               <h2>{player.name}</h2>
               <p>{profileMeta || "Unbekannt"}</p>
+              {awards.length > 0 ? (
+                <div className="profile-award-badges">
+                  {awards.map((a) => {
+                    const def = AWARD_DEFS.find((d) => d.type === a.type);
+                    return def ? (
+                      <span key={`${a.type}-${a.season}`} className={`profile-award-pill ${a.type}`}>
+                        <Award size={11} />
+                        {def.label} {a.season}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              ) : null}
             </div>
             <div className="profile-hero-facts" aria-label="Spielerwerte">
               <MiniStat label="Wert" value={formatMoney(player.latest.value)} />
@@ -1354,7 +1614,7 @@ function PlayerProfileOverlay({
                 className="card-viewer-tilt"
                 style={{ transform: `rotateX(${cardTilt.rotateX}deg) rotateY(${cardTilt.rotateY}deg)` }}
               >
-                <PlayerCard player={player} image={image} />
+                <PlayerCard award={selectedCardAward} player={player} image={image} />
               </div>
             </div>
           </div>
@@ -1364,27 +1624,54 @@ function PlayerProfileOverlay({
   );
 }
 
-function PlayerCard({ image, player }: { image?: string; player: PlayerAggregate }) {
-  const number = player.latest.details.squadNumber || "--";
+function PlayerCard({ award, image, player }: { award?: AwardType; image?: string; player: PlayerAggregate }) {
   const position = player.latest.details.idealPosition || player.latest.position || "FM";
+  const score = Math.round(player.recommendation);
+  const awardDef = award ? AWARD_DEFS.find((d) => d.type === award) : null;
+  const pb = primaryBucket(player.latest.position);
+  const posClass = pb === "Tor" ? "pos-tor" : pb === "Abwehr" ? "pos-abwehr" : pb === "Mittelfeld" ? "pos-mittelfeld" : "pos-angriff";
+  const cardClass = ["player-card", posClass, awardDef?.cardClass].filter(Boolean).join(" ");
+  const nameParts = player.name.trim().split(/\s+/);
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : player.name;
+  const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : "";
+  const nationCode = (player.latest.nation || player.latest.club || "—").slice(0, 3).toUpperCase();
 
   return (
-    <div className="player-card" aria-label={`Sammelkarte ${player.name}`}>
-      <div className="player-card-pattern" aria-hidden="true" />
-      <div className="player-card-shine" aria-hidden="true" />
-      <div className="player-card-topline">
-        <small>2026</small>
-        <span>{compactPosition(position)}</span>
-        <strong>#{number}</strong>
+    <div className={cardClass} aria-label={`Sammelkarte ${player.name}`}>
+      <div className="card-mesh" aria-hidden="true" />
+      <div className="card-wash" aria-hidden="true" />
+      <div className="card-header">
+        <span className="card-year">2026</span>
+        <img alt="" aria-hidden="true" className="card-club-logo" src={CLUB_LOGO_URL} />
+        {awardDef ? (
+          <span className="player-card-award-badge" aria-label={awardDef.label}>
+            <Award size={9} />
+          </span>
+        ) : null}
+        <span className="card-pos-chip">{compactPosition(position)}</span>
       </div>
       <PlayerAvatar
         className="profile-avatar card-portrait"
         image={image}
         initialsText={initials(player.name)}
       />
-      <div className="player-card-footer">
-        <strong>{player.name}</strong>
-        <span>{player.latest.nation || player.latest.club || "FM"}</span>
+      <div className="card-name-block">
+        {firstName ? <span className="card-firstname">{firstName}</span> : null}
+        <strong className="card-lastname">{lastName}</strong>
+      </div>
+      <div className="card-stats">
+        <div className="card-stat">
+          <span>Score</span>
+          <strong>{score}</strong>
+        </div>
+        <div className="card-stat card-stat--center">
+          <span>Pos.</span>
+          <strong>{compactPosition(position)}</strong>
+        </div>
+        <div className="card-stat">
+          <span>Land</span>
+          <strong>{nationCode}</strong>
+        </div>
       </div>
     </div>
   );
@@ -2518,24 +2805,37 @@ function parseLocalizedNumber(value: string) {
   return Number.isFinite(number) ? number : null;
 }
 
-function sortPlayers(a: PlayerAggregate, b: PlayerAggregate, mode: SortMode) {
-  if (mode === "name") {
-    return a.name.localeCompare(b.name);
+function sortPlayers(a: PlayerAggregate, b: PlayerAggregate, mode: SortMode, dir: SortDir) {
+  function num(v: string | undefined | null) {
+    const n = parseFloat((v ?? "").replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : -Infinity;
   }
 
-  if (mode === "growth") {
-    return (b.valueDelta ?? -Infinity) - (a.valueDelta ?? -Infinity);
+  let cmp = 0;
+  switch (mode) {
+    case "num":           cmp = num(a.latest.details.squadNumber) - num(b.latest.details.squadNumber); break;
+    case "name":          cmp = a.name.localeCompare(b.name); break;
+    case "pos":           cmp = (a.latest.position || "").localeCompare(b.latest.position || ""); break;
+    case "age":           cmp = (a.latest.age ?? 999) - (b.latest.age ?? 999); break;
+    case "appearances":   cmp = num(a.latest.details.appearances) - num(b.latest.details.appearances); break;
+    case "minutes":       cmp = num(a.latest.details.minutes) - num(b.latest.details.minutes); break;
+    case "rating":        cmp = num(a.latest.details.rating) - num(b.latest.details.rating); break;
+    case "goals":         cmp = num(a.latest.details.goals) - num(b.latest.details.goals); break;
+    case "assists":       cmp = num(a.latest.details.assists) - num(b.latest.details.assists); break;
+    case "value":         cmp = (a.latest.value ?? -Infinity) - (b.latest.value ?? -Infinity); break;
+    case "growth":        cmp = (a.valueDelta ?? -Infinity) - (b.valueDelta ?? -Infinity); break;
+    case "potential":     cmp = (a.latest.potentialScore ?? -Infinity) - (b.latest.potentialScore ?? -Infinity); break;
+    case "ability":       cmp = (a.latest.abilityScore ?? -Infinity) - (b.latest.abilityScore ?? -Infinity); break;
+    case "recommendation":cmp = a.recommendation - b.recommendation; break;
   }
+  return dir === "desc" ? -cmp : cmp;
+}
 
-  if (mode === "potential") {
-    return (b.latest.potentialScore ?? -Infinity) - (a.latest.potentialScore ?? -Infinity);
-  }
-
-  if (mode === "recommendation") {
-    return b.recommendation - a.recommendation;
-  }
-
-  return (b.latest.value ?? -Infinity) - (a.latest.value ?? -Infinity);
+function primaryBucket(position: string): "Tor" | "Abwehr" | "Mittelfeld" | "Angriff" {
+  if (matchesBucket(position, "Tor")) return "Tor";
+  if (matchesBucket(position, "Abwehr")) return "Abwehr";
+  if (matchesBucket(position, "Mittelfeld")) return "Mittelfeld";
+  return "Angriff";
 }
 
 function matchesBucket(position: string, bucket: PositionBucket) {
@@ -2550,7 +2850,7 @@ function matchesBucket(position: string, bucket: PositionBucket) {
   }
 
   if (bucket === "Abwehr") {
-    return /\bd\b|\bv\b|def|wb|cb|fb|lib|iv|av|verteidiger/.test(value);
+    return /\bd\b|\bv\b|def|wb|cb|fb|lb|rb|lib|iv|lv|rv|av|verteidiger/.test(value);
   }
 
   if (bucket === "Mittelfeld") {
@@ -2699,9 +2999,9 @@ async function fetchPublicLibrary() {
   }
 }
 
-async function publishLibrary(snapshots: Snapshot[], playerImages: Record<string, string>, password: string) {
+async function publishLibrary(snapshots: Snapshot[], playerImages: Record<string, string>, awards: SeasonAward[], password: string) {
   const response = await fetch("/api/library", {
-    body: JSON.stringify({ playerImages, snapshots }),
+    body: JSON.stringify({ awards, playerImages, snapshots }),
     headers: {
       "content-type": "application/json",
       "x-admin-password": password,
